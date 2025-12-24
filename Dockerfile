@@ -1,25 +1,29 @@
 FROM node:22-alpine
 
-# Create app directory
 WORKDIR /usr/src/app
 
-# Install app dependencies (use package*.json for npm@5+)
+# Install app dependencies
 COPY package*.json ./
 RUN npm ci
 
-# Bundle app source
+# Copy source code (including prisma schema & migrations)
 COPY . .
 
 # Build TypeScript -> JavaScript
 RUN npm run build
 
-# Cloud Run will inject PORT; default to 8080 for local use if not set
+# Copy and prepare entrypoint script
+RUN chmod +x docker-entrypoint.sh
+
+ENV NODE_ENV=production
+# Cloud Run injects PORT; default to 8080
 ENV PORT=8080
 
 # Expose the port for local testing (Cloud Run ignores EXPOSE but it's harmless)
 EXPOSE 8080
 
-# Start the server (this will also run Prisma migrations as defined in package.json)
-CMD ["npm", "run", "start"]
+# Ensure Prisma runs before the app starts
+ENTRYPOINT ["./docker-entrypoint.sh"]
+
 
 
