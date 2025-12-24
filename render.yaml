@@ -1,0 +1,103 @@
+services:
+  # Web Service - API Backend
+  - type: web
+    name: mutuals-backend
+    runtime: node
+    env: node
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: API_VERSION
+        value: v1
+      # Database - will be auto-filled when you connect Render PostgreSQL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mutuals-db
+          property: connectionString
+      # JWT Secrets - ADD THESE IN RENDER DASHBOARD
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      # Redis - Optional, can add later
+      - key: REDIS_URL
+        value: redis://localhost:6379
+      - key: REDIS_TTL
+        value: 3600
+      # AWS S3 - Optional
+      - key: AWS_REGION
+        value: us-east-1
+      - key: AWS_S3_BUCKET
+        sync: false
+      # Cloudinary - Optional
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Email Configuration
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: noreply@mutuals.plus
+      # Mailchimp
+      - key: MAILCHIMP_API_KEY
+        sync: false
+      - key: MAILCHIMP_SERVER_PREFIX
+        value: us22
+      - key: MAILCHIMP_LIST_ID
+        sync: false
+      # CORS
+      - key: CORS_ORIGIN
+        value: https://mutuals.plus,http://localhost:3000
+      # Rate Limiting
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      # File Upload
+      - key: MAX_FILE_SIZE
+        value: 10485760
+      - key: ALLOWED_FILE_TYPES
+        value: image/jpeg,image/png,image/webp,image/gif,video/mp4
+      # Frontend URL
+      - key: FRONTEND_URL
+        value: https://mutuals.plus
+      # Email Addresses
+      - key: EMAIL_INFO
+        value: info@mutuals.plus
+      - key: EMAIL_SUBMISSIONS
+        value: submissions@mutuals.plus
+      - key: EMAIL_EVENTS
+        value: events@mutuals.plus
+      - key: EMAIL_TEAM
+        value: team@mutuals.plus
+      - key: EMAIL_FOUNDERS
+        value: founders@mutuals.plus
+
+databases:
+  # PostgreSQL Database
+  - name: mutuals-db
+    databaseName: mutuals_production
+    user: mutuals_user
+    plan: free
+    region: oregon

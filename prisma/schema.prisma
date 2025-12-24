@@ -1,0 +1,512 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  role      UserRole @default(EDITOR)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  articles       Article[]
+  playlists      Playlist[]
+  events         Event[]
+  uploadedMedia  MediaFile[]
+  reviewedSubmissions ArtistSubmission[] @relation("ReviewedBy")
+
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+  CONTRIBUTOR
+}
+
+// ============================================
+// ARTICLES / EDITORIAL CONTENT
+// ============================================
+
+model Article {
+  id            String        @id @default(uuid())
+  title         String
+  slug          String        @unique
+  subtitle      String?
+  content       String        @db.Text
+  excerpt       String?       @db.Text
+  description   String?       @db.Text // SEO/Meta description
+  readTime      String?       @map("read_time") // e.g. "8 min read"
+  heroMediaUrl  String?       @map("hero_media_url")
+  heroMediaType MediaType?    @map("hero_media_type")
+  category      String
+  tags          String[]
+  status        ArticleStatus @default(DRAFT)
+  publishDate   DateTime?     @map("publish_date")
+  viewCount     Int           @default(0) @map("view_count")
+  featured      Boolean       @default(false)
+  authorId      String        @map("author_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  author         User                @relation(fields: [authorId], references: [id])
+  relatedArticles ArticleRelation[] @relation("Article")
+  relatedTo       ArticleRelation[] @relation("RelatedArticle")
+
+  @@index([slug])
+  @@index([category])
+  @@index([status])
+  @@index([publishDate])
+  @@index([featured])
+  @@map("articles")
+}
+
+model ArticleRelation {
+  id               String   @id @default(uuid())
+  articleId        String   @map("article_id")
+  relatedArticleId String   @map("related_article_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  article        Article @relation("Article", fields: [articleId], references: [id], onDelete: Cascade)
+  relatedArticle Article @relation("RelatedArticle", fields: [relatedArticleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, relatedArticleId])
+  @@map("article_relations")
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+// ============================================
+// PLAYLISTS
+// ============================================
+
+model Playlist {
+  id              String        @id @default(uuid())
+  title           String
+  description     String?       @db.Text
+  coverArtUrl     String?       @map("cover_art_url")
+  curatorName     String        @map("curator_name")
+  curatorId       String?       @map("curator_id")
+  platform        MusicPlatform
+  embedUrl        String        @map("embed_url")
+  externalLink    String?       @map("external_link")
+  seriesName      String?       @map("series_name")
+  moodDescription String?       @map("mood_description") @db.Text
+  featured        Boolean       @default(false)
+  playCount       Int           @default(0) @map("play_count")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  curator User? @relation(fields: [curatorId], references: [id])
+
+  @@index([platform])
+  @@index([featured])
+  @@index([seriesName])
+  @@map("playlists")
+}
+
+enum MusicPlatform {
+  SPOTIFY
+  APPLE_MUSIC
+  SOUNDCLOUD
+  YOUTUBE
+}
+
+// ============================================
+// DJ PROFILES & MIXES
+// ============================================
+
+model DJProfile {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  bio         String?  @db.Text
+  photoUrl    String?  @map("photo_url")
+  socialLinks Json?    @map("social_links")
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  mixes DJMix[]
+
+  @@index([slug])
+  @@index([featured])
+  @@map("dj_profiles")
+}
+
+model DJMix {
+  id            String        @id @default(uuid())
+  djProfileId   String        @map("dj_profile_id")
+  title         String
+  seriesNumber  Int?          @map("series_number")
+  description   String?       @db.Text
+  embedUrl      String        @map("embed_url")
+  platform      MusicPlatform
+  duration      Int?          // in seconds
+  releaseDate   DateTime?     @map("release_date")
+  playCount     Int           @default(0) @map("play_count")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  djProfile DJProfile @relation(fields: [djProfileId], references: [id], onDelete: Cascade)
+
+  @@index([djProfileId])
+  @@index([releaseDate])
+  @@map("dj_mixes")
+}
+
+// ============================================
+// EVENTS
+// ============================================
+
+model Event {
+  id          String      @id @default(uuid())
+  title       String
+  description String?     @db.Text
+  flyerUrl    String?     @map("flyer_url")
+  eventDate   DateTime    @map("event_date")
+  eventTime   String?     @map("event_time")
+  venue       String
+  location    String
+  city        String?
+  country     String?
+  ticketLink  String?     @map("ticket_link")
+  ticketPlatform String?  @map("ticket_platform")
+  ticketStatus String?    @map("ticket_status") // On Sale, Sold Out, etc.
+  type        String?     // Concert, Festival, etc.
+  status      EventStatus @default(UPCOMING)
+  featured    Boolean     @default(false)
+  creatorId   String?     @map("creator_id")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  creator    User?       @relation(fields: [creatorId], references: [id])
+  media      EventMedia[]
+
+  @@index([eventDate])
+  @@index([status])
+  @@index([featured])
+  @@map("events")
+}
+
+model EventMedia {
+  id        String    @id @default(uuid())
+  eventId   String    @map("event_id")
+  mediaUrl  String    @map("media_url")
+  mediaType MediaType @map("media_type")
+  caption   String?
+  order     Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_media")
+}
+
+enum EventStatus {
+  UPCOMING
+  PAST
+}
+
+// ============================================
+// PRODUCTS / SHOP
+// ============================================
+
+model Product {
+  id          String        @id @default(uuid())
+  name        String
+  slug        String        @unique
+  description String?       @db.Text
+  category    String
+  basePrice   Decimal       @map("base_price") @db.Decimal(10, 2)
+  currency    String        @default("USD")
+  featured    Boolean       @default(false)
+  status      ProductStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  variants           ProductVariant[]
+  images             ProductImage[]
+  recommendedProducts ProductRecommendation[] @relation("Product")
+  recommendations     ProductRecommendation[] @relation("RecommendedProduct")
+
+  @@index([slug])
+  @@index([category])
+  @@index([status])
+  @@index([featured])
+  @@map("products")
+}
+
+model ProductVariant {
+  id            String   @id @default(uuid())
+  productId     String   @map("product_id")
+  sku           String   @unique
+  size          String?
+  color         String?
+  price         Decimal  @db.Decimal(10, 2)
+  stockQuantity Int      @default(0) @map("stock_quantity")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
+
+  @@index([productId])
+  @@index([sku])
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  imageUrl  String   @map("image_url")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductRecommendation {
+  id                   String   @id @default(uuid())
+  productId            String   @map("product_id")
+  recommendedProductId String   @map("recommended_product_id")
+  order                Int      @default(0)
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  product            Product @relation("Product", fields: [productId], references: [id], onDelete: Cascade)
+  recommendedProduct Product @relation("RecommendedProduct", fields: [recommendedProductId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, recommendedProductId])
+  @@map("product_recommendations")
+}
+
+enum ProductStatus {
+  ACTIVE
+  SOLD_OUT
+  ARCHIVED
+}
+
+// ============================================
+// SHOPPING CART
+// ============================================
+
+model ShoppingCart {
+  id        String   @id @default(uuid())
+  sessionId String   @unique @map("session_id")
+  userId    String?  @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  items CartItem[]
+
+  @@index([sessionId])
+  @@index([expiresAt])
+  @@map("shopping_carts")
+}
+
+model CartItem {
+  id               String   @id @default(uuid())
+  cartId           String   @map("cart_id")
+  productVariantId String   @map("product_variant_id")
+  quantity         Int      @default(1)
+  priceAtTime      Decimal  @map("price_at_time") @db.Decimal(10, 2)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  cart           ShoppingCart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+
+  @@index([cartId])
+  @@index([productVariantId])
+  @@map("cart_items")
+}
+
+// ============================================
+// NEWSLETTER
+// ============================================
+
+model NewsletterSubscriber {
+  id            String               @id @default(uuid())
+  email         String               @unique
+  name          String?
+  source        SubscriptionSource   @default(HOMEPAGE)
+  status        SubscriptionStatus   @default(ACTIVE)
+  preferences   Json?
+  subscribedAt  DateTime             @default(now()) @map("subscribed_at")
+  unsubscribedAt DateTime?           @map("unsubscribed_at")
+
+  @@index([email])
+  @@index([status])
+  @@map("newsletter_subscribers")
+}
+
+enum SubscriptionSource {
+  HOMEPAGE
+  FOOTER
+  POPUP
+  EVENT
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  UNSUBSCRIBED
+}
+
+// ============================================
+// CONTACT & SUBMISSIONS
+// ============================================
+
+model ContactSubmission {
+  id             String           @id @default(uuid())
+  name           String
+  email          String
+  subject        String?
+  message        String           @db.Text
+  submissionType SubmissionType   @default(GENERAL)
+  status         SubmissionStatus @default(NEW)
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("contact_submissions")
+}
+
+model ArtistSubmission {
+  id             String           @id @default(uuid())
+  name           String
+  email          String
+  role           String // artist, dj, designer
+  bio            String?          @db.Text
+  portfolioLinks Json?            @map("portfolio_links")
+  socialMedia    Json?            @map("social_media")
+  pitchMessage   String           @db.Text @map("pitch_message")
+  attachments    String[]
+  status         SubmissionStatus @default(NEW)
+  reviewedBy     String?          @map("reviewed_by")
+  reviewedAt     DateTime?        @map("reviewed_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  reviewer User? @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("artist_submissions")
+}
+
+enum SubmissionType {
+  GENERAL
+  ARTIST
+  DJ
+  DESIGNER
+}
+
+enum SubmissionStatus {
+  NEW
+  REVIEWED
+  ARCHIVED
+}
+
+// ============================================
+// MEDIA LIBRARY
+// ============================================
+
+model MediaFile {
+  id           String    @id @default(uuid())
+  filename     String
+  originalName String    @map("original_name")
+  filePath     String    @map("file_path")
+  fileType     String    @map("file_type")
+  fileSize     Int       @map("file_size")
+  mimeType     String    @map("mime_type")
+  altText      String?   @map("alt_text")
+  uploadedBy   String?   @map("uploaded_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  uploader User? @relation(fields: [uploadedBy], references: [id])
+
+  @@index([fileType])
+  @@index([createdAt])
+  @@map("media_files")
+}
+
+// ============================================
+// SITE CONFIGURATION
+// ============================================
+
+model SiteSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  type        String   // text, json, boolean, number
+  description String?  @db.Text
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([key])
+  @@map("site_settings")
+}
+
+model HomepageHeroSlide {
+  id       String    @id @default(uuid())
+  mediaUrl String    @map("media_url")
+  mediaType MediaType @map("media_type")
+  title    String?
+  subtitle String?
+  ctaText  String?   @map("cta_text")
+  ctaLink  String?   @map("cta_link")
+  order    Int       @default(0)
+  active   Boolean   @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([active])
+  @@index([order])
+  @@map("homepage_hero_slides")
+}
