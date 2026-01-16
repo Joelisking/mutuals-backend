@@ -196,22 +196,38 @@ class EmailService {
     name: string,
     type: 'contact' | 'artist'
   ): Promise<void> {
+    // Extract first name from full name
+    const firstName = name.split(' ')[0];
+
     const subject =
       type === 'contact'
         ? 'We received your message'
-        : 'Your submission has been received';
+        : 'We received your submission';
 
     const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Thank you for reaching out! 📨</h2>
-        <p>Hi ${name},</p>
-        <p>We've received your ${
-          type === 'contact' ? 'message' : 'submission'
-        } and will get back to you soon.</p>
-        <p>Our team typically responds within 2-3 business days.</p>
-        <p style="margin-top: 30px;">
-          Best regards,<br/>
-          The Mutuals+ Team
+      <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #333;">
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+          Hi ${firstName},
+        </p>
+
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+          We've received your submission and appreciate you sharing your work with Mutuals+.<br/>
+          Our team is currently reviewing entries and typically responds within 2–3 business days.
+        </p>
+
+        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+          While you're here, stay connected:
+        </p>
+
+        <ul style="font-size: 16px; line-height: 1.8; padding-left: 0; list-style: none; margin-bottom: 30px;">
+          <li style="margin-bottom: 8px;">🎧 Curated sounds: <a href="https://mutualsplus.com/playlists" style="color: #1ecbe1; text-decoration: none;">Explore Playlists</a></li>
+          <li style="margin-bottom: 8px;">📲 Follow us on Instagram & X: <a href="https://instagram.com/mutualsplus" style="color: #1ecbe1; text-decoration: none;">@mutualsplus</a></li>
+          <li style="margin-bottom: 8px;">✉️ Editorial drops & events: <a href="https://mutualsplus.com/#newsletter" style="color: #1ecbe1; text-decoration: none;">Subscribe to Newsletter</a></li>
+        </ul>
+
+        <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">
+          With respect,<br/>
+          <strong>Mutuals+</strong>
         </p>
       </div>
     `;

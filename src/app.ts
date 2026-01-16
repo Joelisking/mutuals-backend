@@ -21,6 +21,7 @@ import productsRoutes from './modules/products/products.routes';
 import cartRoutes from './modules/cart/cart.routes';
 import mediaRoutes from './modules/media/media.routes';
 import homepageRoutes from './modules/homepage/homepage.routes';
+import settingsRoutes from './modules/settings/settings.routes';
 
 class App {
   public app: Application;
@@ -114,6 +115,7 @@ class App {
     this.app.use(`/api/${env.API_VERSION}/cart`, cartRoutes);
     this.app.use(`/api/${env.API_VERSION}/media`, mediaRoutes);
     this.app.use(`/api/${env.API_VERSION}/homepage`, homepageRoutes);
+    this.app.use(`/api/${env.API_VERSION}/settings`, settingsRoutes);
   }
 
   private initializeErrorHandling(): void {
